@@ -1,0 +1,14 @@
+{
+  "name": "monorepo-videoconferencia",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "npm run start --workspace=@videoconferencia/web",
+    "build": "npm run build --workspace=@videoconferencia/web",
+    "test": "npm run test --workspace=@videoconferencia/web"
+  }
+}
