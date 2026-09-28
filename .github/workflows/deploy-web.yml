@@ -1,0 +1,61 @@
+name: Validate and deploy frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-web.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/deploy-web.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: validate-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Build Angular and deploy production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build Angular application
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Configure temporary AWS credentials
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Upload production build to S3
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: >-
+          aws s3 sync apps/web/dist/video-conferencia/browser
+          s3://${{ vars.AWS_S3_BUCKET }}
+          --delete
